@@ -1,0 +1,177 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: livehouse-api
+  servlet:
+    multipart:
+      # 文件上传最大大小（默认50MB）
+      max-file-size: 50MB
+      # 单个请求最大大小
+      max-request-size: 100MB
+      # 内存中文件大小阈值，超过则写入临时文件
+      file-size-threshold: 10MB
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:mysql://localhost:3306/livehouse?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root_Mysql_123690
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
+    password: root
+    timeout: 10000ms
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: AUTO
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT配置
+jwt:
+  secret: livehouse_jwt_secret_key_2024_prod_secure
+  expire: 86400000
+  refresh-expire: 604800000
+
+# 腾讯云配置
+tencent:
+  cloud:
+    # 是否启用腾讯云直播服务
+    enabled: false
+    # 腾讯云SecretId（前往腾讯云控制台-访问密钥获取）
+    secret-id: YOUR_SECRET_ID
+    # 腾讯云SecretKey（前往腾讯云控制台-访问密钥获取）
+    secret-key: YOUR_SECRET_KEY
+    # 直播服务区域（ap-shanghai/ap-beijing/ap-guangzhou等）
+    live-region: ap-shanghai
+    # 推流域名（需在腾讯云直播控制台配置并完成备案）
+    push-domain: push.livehouse.com
+    # 播放域名（需在腾讯云直播控制台配置并完成备案）
+    play-domain: play.livehouse.com
+    # 应用名称（默认为live，需与控制台配置一致）
+    app-name: live
+    # 推流地址有效期（秒），默认1小时
+    push-expire-time: 3600
+    # 播放地址有效期（秒），默认24小时
+    play-expire-time: 86400
+    # 是否启用防盗链签名
+    enable-anti-leech: true
+
+# 文件上传配置
+file:
+  upload:
+    # 上传类型：local-本地存储(默认) / aliyun-阿里云OSS / tencent-腾讯云COS
+    type: local
+    # 本地存储路径
+    local:
+      path: ./uploads
+      # 本地访问URL前缀
+      url-prefix: /uploads/
+    # 允许上传的文件类型
+    allowed-types: jpg,jpeg,png,gif,bmp,webp,mp4,webm
+    # 单个文件最大大小（默认50MB）
+    max-size: 52428800
+  # 阿里云OSS配置
+  aliyun:
+    oss:
+      enabled: false
+      endpoint: oss-cn-shanghai.aliyuncs.com
+      access-key-id: YOUR_ACCESS_KEY_ID
+      access-key-secret: YOUR_ACCESS_KEY_SECRET
+      bucket-name: livehouse
+      url-prefix: https://livehouse.oss-cn-shanghai.aliyuncs.com/
+  # 腾讯云COS配置
+  tencent:
+    cos:
+      enabled: false
+      region: ap-shanghai
+      secret-id: YOUR_SECRET_ID
+      secret-key: YOUR_SECRET_KEY
+      bucket-name: livehouse-1300000000
+      app-id: 1300000000
+      url-prefix: https://livehouse-1300000000.cos.ap-shanghai.myqcloud.com/
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:mysql://localhost:3306/livehouse?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: livehouse
+    password: LiveHouse@2024
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
+    password: LiveHouse@2024
+    timeout: 10000ms
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: AUTO
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+jwt:
+  secret: livehouse_jwt_secret_key_2024_prod
+  expire: 86400000
+  refresh-expire: 604800000
+
+tencent:
+  cloud:
+    enabled: true
+    secret-id: YOUR_SECRET_ID
+    secret-key: YOUR_SECRET_KEY
+    live-region: ap-shanghai
+    push-domain: push.livehouse.com
+    play-domain: play.livehouse.com
+    app-name: live
+    push-expire-time: 3600
+    play-expire-time: 86400
+    enable-anti-leech: true
+
+file:
+  upload:
+    type: local
+    local:
+      path: /data/livehouse/uploads
+      url-prefix: /uploads/
+    allowed-types: jpg,jpeg,png,gif,bmp,webp,mp4,webm
+    max-size: 52428800
+  aliyun:
+    oss:
+      enabled: false
+      endpoint: oss-cn-shanghai.aliyuncs.com
+      access-key-id: YOUR_ACCESS_KEY_ID
+      access-key-secret: YOUR_ACCESS_KEY_SECRET
+      bucket-name: livehouse
+      url-prefix: https://livehouse.oss-cn-shanghai.aliyuncs.com/
+  tencent:
+    cos:
+      enabled: false
+      region: ap-shanghai
+      secret-id: YOUR_SECRET_ID
+      secret-key: YOUR_SECRET_KEY
+      bucket-name: livehouse-1300000000
+      app-id: 1300000000
+      url-prefix: https://livehouse-1300000000.cos.ap-shanghai.myqcloud.com/
