@@ -115,7 +115,7 @@ import { checkFavoriteApi, toggleFavoriteApi } from '@/api/favorite.js'
 import { recordHistoryApi } from '@/api/history.js'
 import AppImage from '@/components/AppImage.vue'
 
-const BASE_URL = 'http://localhost:8080'
+const BASE_URL = ''
 const CAMERA_FOV = 75
 const ROTATE_STEP = 18
 

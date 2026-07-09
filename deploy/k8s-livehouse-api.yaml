@@ -1,0 +1,390 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: livehouse
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livehouse-api-config
+  namespace: livehouse
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8080"
+
+  MYSQL_HOST: "<MYSQL_HOST>"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "livehouse"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://<MYSQL_HOST>:3306/livehouse?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
+
+  REDIS_HOST: "<REDIS_HOST>"
+  REDIS_PORT: "6379"
+
+  SPRING_RABBITMQ_HOST: "<RABBITMQ_HOST>"
+  SPRING_RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_VIRTUAL_HOST: "/"
+  LIVEHOUSE_RABBITMQ_ENABLED: "false"
+
+  JWT_EXPIRE: "86400000"
+  JWT_REFRESH_EXPIRE: "604800000"
+
+  TENCENT_CLOUD_ENABLED: "false"
+  TENCENT_CLOUD_SECRET_ID: "<TENCENT_CLOUD_SECRET_ID>"
+  TENCENT_CLOUD_SECRET_KEY: "<TENCENT_CLOUD_SECRET_KEY>"
+  TENCENT_CLOUD_LIVE_REGION: "ap-shanghai"
+  TENCENT_CLOUD_PUSH_DOMAIN: "<TENCENT_CLOUD_PUSH_DOMAIN>"
+  TENCENT_CLOUD_PLAY_DOMAIN: "<TENCENT_CLOUD_PLAY_DOMAIN>"
+  TENCENT_CLOUD_APP_NAME: "live"
+  TENCENT_CLOUD_PUSH_EXPIRE_TIME: "3600"
+  TENCENT_CLOUD_PLAY_EXPIRE_TIME: "86400"
+  TENCENT_CLOUD_ENABLE_ANTI_LEECH: "true"
+
+  FILE_UPLOAD_TYPE: "local"
+  FILE_UPLOAD_LOCAL_PATH: "/data/livehouse/uploads"
+  FILE_UPLOAD_LOCAL_URL_PREFIX: "/uploads/"
+  FILE_UPLOAD_ALLOWED_TYPES: "jpg,jpeg,png,gif,bmp,webp,mp4,webm"
+  FILE_UPLOAD_MAX_SIZE: "52428800"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: livehouse-api-secret
+  namespace: livehouse
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_DATASOURCE_PASSWORD: "root"
+  SPRING_REDIS_PASSWORD: "root"
+  SPRING_RABBITMQ_USERNAME: "guest"
+  SPRING_RABBITMQ_PASSWORD: "guest"
+  JWT_SECRET: "<JWT_SECRET>"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: livehouse-api-uploads
+  namespace: livehouse
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livehouse-api
+  namespace: livehouse
+  labels:
+    app: livehouse-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livehouse-api
+  template:
+    metadata:
+      labels:
+        app: livehouse-api
+    spec:
+      containers:
+        - name: livehouse-api
+          image: <IMAGE_REGISTRY>/livehouse-api:<IMAGE_TAG>
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: livehouse-api-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: livehouse-api-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: SPRING_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: REDIS_HOST
+            - name: SPRING_REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: REDIS_PORT
+            - name: SPRING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: livehouse-api-secret
+                  key: SPRING_REDIS_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: livehouse-api-config
+            - secretRef:
+                name: livehouse-api-secret
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/livehouse/uploads
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: livehouse-api-uploads
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livehouse-api
+  namespace: livehouse
+  labels:
+    app: livehouse-api
+spec:
+  type: ClusterIP
+  selector:
+    app: livehouse-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livehouse-frontend-nginx
+  namespace: livehouse
+data:
+  admin.conf: |
+    server {
+      listen 80;
+      server_name _;
+
+      root /usr/share/nginx/html;
+      index index.html;
+
+      client_max_body_size 100m;
+
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+
+      location /api/ {
+        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      }
+
+      location /admin/ {
+        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/admin/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      }
+
+      location /uploads/ {
+        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/uploads/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      }
+    }
+  user.conf: |
+    server {
+      listen 80;
+      server_name _;
+
+      root /usr/share/nginx/html;
+      index index.html;
+
+      client_max_body_size 100m;
+
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+
+      location /api/ {
+        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      }
+
+      location /uploads/ {
+        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/uploads/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livehouse-admin
+  namespace: livehouse
+  labels:
+    app: livehouse-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livehouse-admin
+  template:
+    metadata:
+      labels:
+        app: livehouse-admin
+    spec:
+      containers:
+        - name: livehouse-admin
+          image: <IMAGE_REGISTRY>/livehouse-admin:<IMAGE_TAG>
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: admin.conf
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: livehouse-frontend-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livehouse-admin
+  namespace: livehouse
+  labels:
+    app: livehouse-admin
+spec:
+  type: ClusterIP
+  selector:
+    app: livehouse-admin
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livehouse-user
+  namespace: livehouse
+  labels:
+    app: livehouse-user
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livehouse-user
+  template:
+    metadata:
+      labels:
+        app: livehouse-user
+    spec:
+      containers:
+        - name: livehouse-user
+          image: <IMAGE_REGISTRY>/livehouse-user:<IMAGE_TAG>
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: user.conf
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: livehouse-frontend-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livehouse-user
+  namespace: livehouse
+  labels:
+    app: livehouse-user
+spec:
+  type: ClusterIP
+  selector:
+    app: livehouse-user
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
