@@ -1,0 +1,53 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: registry.cn-hangzhou.aliyuncs.com
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - image: livehouse-api
+            context: livehouse/livehouse-api
+            dockerfile: livehouse/livehouse-api/Dockerfile
+          - image: livehouse-admin
+            context: livehouse/livehouse-admin
+            dockerfile: livehouse/livehouse-admin/Dockerfile
+          - image: livehouse-user
+            context: livehouse/livehouse-user
+            dockerfile: livehouse/livehouse-user/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Aliyun Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.ALIYUN_REGISTRY_USERNAME }}
+          password: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ secrets.ALIYUN_REGISTRY_NAMESPACE }}/${{ matrix.image }}:latest
+            ${{ env.REGISTRY }}/${{ secrets.ALIYUN_REGISTRY_NAMESPACE }}/${{ matrix.image }}:${{ github.sha }}
