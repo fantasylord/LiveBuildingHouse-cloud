@@ -1,5 +1,5 @@
-ARG MAVEN_IMAGE=registry.cn-hangzhou.aliyuncs.com/library/maven:3.9.9-eclipse-temurin-17
-ARG JRE_IMAGE=registry.cn-hangzhou.aliyuncs.com/library/eclipse-temurin:17-jre-alpine
+ARG MAVEN_IMAGE=maven:3.9.9-eclipse-temurin-17
+ARG JRE_IMAGE=eclipse-temurin:17-jre-alpine
 
 FROM ${MAVEN_IMAGE} AS build
 

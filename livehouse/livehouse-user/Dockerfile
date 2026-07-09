@@ -1,5 +1,5 @@
-ARG NODE_IMAGE=registry.cn-hangzhou.aliyuncs.com/library/node:20-alpine
-ARG NGINX_IMAGE=registry.cn-hangzhou.aliyuncs.com/library/nginx:1.27-alpine
+ARG NODE_IMAGE=node:20-alpine
+ARG NGINX_IMAGE=nginx:1.27-alpine
 
 FROM ${NODE_IMAGE} AS build
 
