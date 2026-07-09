@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: livehouse
+  name: deploy-dev
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: livehouse-api-config
-  namespace: livehouse
+  namespace: deploy-dev
 data:
   SPRING_PROFILES_ACTIVE: "prod"
   SERVER_PORT: "8080"
@@ -49,7 +49,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: livehouse-api-secret
-  namespace: livehouse
+  namespace: deploy-dev
 type: Opaque
 stringData:
   SPRING_DATASOURCE_USERNAME: "root"
@@ -63,7 +63,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: livehouse-api-uploads
-  namespace: livehouse
+  namespace: deploy-dev
 spec:
   accessModes:
     - ReadWriteOnce
@@ -75,7 +75,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: livehouse-api
-  namespace: livehouse
+  namespace: deploy-dev
   labels:
     app: livehouse-api
 spec:
@@ -90,7 +90,7 @@ spec:
     spec:
       containers:
         - name: livehouse-api
-          image: <IMAGE_REGISTRY>/livehouse-api:<IMAGE_TAG>
+          image: livehouse-api:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -162,7 +162,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: livehouse-api
-  namespace: livehouse
+  namespace: deploy-dev
   labels:
     app: livehouse-api
 spec:
@@ -178,7 +178,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: livehouse-frontend-nginx
-  namespace: livehouse
+  namespace: deploy-dev
 data:
   admin.conf: |
     server {
@@ -195,7 +195,7 @@ data:
       }
 
       location /api/ {
-        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/api/;
+        proxy_pass http://livehouse-api.deploy-dev.svc.cluster.local:8080/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -203,7 +203,7 @@ data:
       }
 
       location /admin/ {
-        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/admin/;
+        proxy_pass http://livehouse-api.deploy-dev.svc.cluster.local:8080/admin/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -211,7 +211,7 @@ data:
       }
 
       location /uploads/ {
-        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/uploads/;
+        proxy_pass http://livehouse-api.deploy-dev.svc.cluster.local:8080/uploads/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -233,7 +233,7 @@ data:
       }
 
       location /api/ {
-        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/api/;
+        proxy_pass http://livehouse-api.deploy-dev.svc.cluster.local:8080/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -241,7 +241,7 @@ data:
       }
 
       location /uploads/ {
-        proxy_pass http://livehouse-api.livehouse.svc.cluster.local:8080/uploads/;
+        proxy_pass http://livehouse-api.deploy-dev.svc.cluster.local:8080/uploads/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -253,7 +253,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: livehouse-admin
-  namespace: livehouse
+  namespace: deploy-dev
   labels:
     app: livehouse-admin
 spec:
@@ -268,7 +268,7 @@ spec:
     spec:
       containers:
         - name: livehouse-admin
-          image: <IMAGE_REGISTRY>/livehouse-admin:<IMAGE_TAG>
+          image: livehouse-admin:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -307,7 +307,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: livehouse-admin
-  namespace: livehouse
+  namespace: deploy-dev
   labels:
     app: livehouse-admin
 spec:
@@ -323,7 +323,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: livehouse-user
-  namespace: livehouse
+  namespace: deploy-dev
   labels:
     app: livehouse-user
 spec:
@@ -338,7 +338,7 @@ spec:
     spec:
       containers:
         - name: livehouse-user
-          image: <IMAGE_REGISTRY>/livehouse-user:<IMAGE_TAG>
+          image: livehouse-user:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -377,7 +377,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: livehouse-user
-  namespace: livehouse
+  namespace: deploy-dev
   labels:
     app: livehouse-user
 spec:
