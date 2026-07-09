@@ -57,7 +57,7 @@ stringData:
   SPRING_REDIS_PASSWORD: "root"
   SPRING_RABBITMQ_USERNAME: "guest"
   SPRING_RABBITMQ_PASSWORD: "guest"
-  JWT_SECRET: "<JWT_SECRET>"
+  JWT_SECRET: "livehouse-dev-jwt-secret-20260709-change-me"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
