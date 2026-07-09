@@ -12,10 +12,9 @@ data:
   SPRING_PROFILES_ACTIVE: "prod"
   SERVER_PORT: "8080"
 
-  MYSQL_HOST: "<MYSQL_HOST>"
+  MYSQL_HOST: "host.docker.internal"
   MYSQL_PORT: "3306"
   MYSQL_DATABASE: "livehouse"
-  SPRING_DATASOURCE_URL: "jdbc:mysql://<MYSQL_HOST>:3306/livehouse?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
 
   REDIS_HOST: "<REDIS_HOST>"
   REDIS_PORT: "6379"
@@ -96,11 +95,23 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            - name: SPRING_DATASOURCE_URL
+            - name: MYSQL_HOST
               valueFrom:
                 configMapKeyRef:
                   name: livehouse-api-config
-                  key: SPRING_DATASOURCE_URL
+                  key: MYSQL_HOST
+            - name: MYSQL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: MYSQL_PORT
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: MYSQL_DATABASE
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://$(MYSQL_HOST):$(MYSQL_PORT)/$(MYSQL_DATABASE)?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
