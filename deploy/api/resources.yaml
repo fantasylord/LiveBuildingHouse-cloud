@@ -1,0 +1,182 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livehouse-api-config
+  namespace: deploy-dev
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8080"
+
+  MYSQL_HOST: "host.docker.internal"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "livehouse"
+
+  REDIS_HOST: "<REDIS_HOST>"
+  REDIS_PORT: "6379"
+
+  SPRING_RABBITMQ_HOST: "<RABBITMQ_HOST>"
+  SPRING_RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_VIRTUAL_HOST: "/"
+  LIVEHOUSE_RABBITMQ_ENABLED: "false"
+
+  JWT_EXPIRE: "86400000"
+  JWT_REFRESH_EXPIRE: "604800000"
+
+  TENCENT_CLOUD_ENABLED: "false"
+  TENCENT_CLOUD_SECRET_ID: "<TENCENT_CLOUD_SECRET_ID>"
+  TENCENT_CLOUD_SECRET_KEY: "<TENCENT_CLOUD_SECRET_KEY>"
+  TENCENT_CLOUD_LIVE_REGION: "ap-shanghai"
+  TENCENT_CLOUD_PUSH_DOMAIN: "<TENCENT_CLOUD_PUSH_DOMAIN>"
+  TENCENT_CLOUD_PLAY_DOMAIN: "<TENCENT_CLOUD_PLAY_DOMAIN>"
+  TENCENT_CLOUD_APP_NAME: "live"
+  TENCENT_CLOUD_PUSH_EXPIRE_TIME: "3600"
+  TENCENT_CLOUD_PLAY_EXPIRE_TIME: "86400"
+  TENCENT_CLOUD_ENABLE_ANTI_LEECH: "true"
+
+  FILE_UPLOAD_TYPE: "local"
+  FILE_UPLOAD_LOCAL_PATH: "/data/livehouse/uploads"
+  FILE_UPLOAD_LOCAL_URL_PREFIX: "/uploads/"
+  FILE_UPLOAD_ALLOWED_TYPES: "jpg,jpeg,png,gif,bmp,webp,mp4,webm"
+  FILE_UPLOAD_MAX_SIZE: "52428800"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: livehouse-api-secret
+  namespace: deploy-dev
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_DATASOURCE_PASSWORD: "root"
+  SPRING_REDIS_PASSWORD: "root"
+  SPRING_RABBITMQ_USERNAME: "guest"
+  SPRING_RABBITMQ_PASSWORD: "guest"
+  # HS256 requires at least 32 UTF-8 characters. Replace this with a private random value before production.
+  JWT_SECRET: "<JWT_SECRET_AT_LEAST_32_CHARACTERS>"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: livehouse-api-uploads
+  namespace: deploy-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livehouse-api
+  namespace: deploy-dev
+  labels:
+    app: livehouse-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livehouse-api
+  template:
+    metadata:
+      labels:
+        app: livehouse-api
+    spec:
+      containers:
+        - name: livehouse-api
+          image: crpi-ox7hw4m9qzeiim60.cn-hangzhou.personal.cr.aliyuncs.com/devlop8655/livehouse-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: MYSQL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: MYSQL_HOST
+            - name: MYSQL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: MYSQL_PORT
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: MYSQL_DATABASE
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://$(MYSQL_HOST):$(MYSQL_PORT)/$(MYSQL_DATABASE)?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: livehouse-api-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: livehouse-api-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: SPRING_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: REDIS_HOST
+            - name: SPRING_REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: livehouse-api-config
+                  key: REDIS_PORT
+            - name: SPRING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: livehouse-api-secret
+                  key: SPRING_REDIS_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: livehouse-api-config
+            - secretRef:
+                name: livehouse-api-secret
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/livehouse/uploads
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: livehouse-api-uploads
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livehouse-api
+  namespace: deploy-dev
+  labels:
+    app: livehouse-api
+spec:
+  type: ClusterIP
+  selector:
+    app: livehouse-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -56,7 +56,8 @@ stringData:
   SPRING_REDIS_PASSWORD: "root"
   SPRING_RABBITMQ_USERNAME: "guest"
   SPRING_RABBITMQ_PASSWORD: "guest"
-  JWT_SECRET: "<JWT_SECRET>"
+  # HS256 requires at least 32 UTF-8 characters. Replace this with a private random value before production.
+  JWT_SECRET: "<JWT_SECRET_AT_LEAST_32_CHARACTERS>"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livehouse-user
+  namespace: deploy-dev
+  labels:
+    app: livehouse-user
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livehouse-user
+  template:
+    metadata:
+      labels:
+        app: livehouse-user
+    spec:
+      containers:
+        - name: livehouse-user
+          image: crpi-ox7hw4m9qzeiim60.cn-hangzhou.personal.cr.aliyuncs.com/devlop8655/livehouse-user:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: user.conf
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: livehouse-frontend-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livehouse-user
+  namespace: deploy-dev
+  labels:
+    app: livehouse-user
+spec:
+  type: ClusterIP
+  selector:
+    app: livehouse-user
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
