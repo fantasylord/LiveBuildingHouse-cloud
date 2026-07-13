@@ -3,7 +3,7 @@
     <div class="login-box">
       <div class="login-header">
         <h2>LiveHouse</h2>
-        <p>高端楼盘智慧看房系统</p>
+        <p>高端楼盘智慧看房系统New!</p>
       </div>
       <el-form ref="loginForm" :model="form" :rules="rules" class="login-form">
         <el-form-item prop="username">
