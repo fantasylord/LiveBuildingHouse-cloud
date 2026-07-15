@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: livehouse-admin
-          image: crpi-ox7hw4m9qzeiim60.cn-hangzhou.personal.cr.aliyuncs.com/devlop8655/livehouse-admin:latest
+          image: "livehouse-admin:1.1"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
