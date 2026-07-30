@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: livehouse-admin
-          image: " livehouse-admin:1.0"
+          image: "livehouse-admin:1.1"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
